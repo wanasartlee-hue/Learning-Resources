@@ -160,7 +160,7 @@ mark{background:var(--yellow);color:var(--on-yellow);border-radius:3px;padding:0
     <button class="btn primary" id="addEntry">+ เพิ่มรายการในหมวดนี้</button>
     <button class="btn" id="addYear">+ เพิ่มปีงบประมาณ</button>
     <button class="btn danger" id="delYear">ลบปีงบประมาณนี้</button>
-    <button class="btn" id="logout">ออกจากระบบ</button>
+    <button class="btn yellow" id="editMode">เสร็จสิ้นการแก้ไข</button>
   </div>
   <p class="desc" id="desc"></p>
   <div class="tools">
@@ -302,10 +302,12 @@ function renderList(){
 }
 function renderEdit(){
   $('#editToggle').hidden = !canEdit;
-  $('#editToggle').textContent = editOn ? 'เสร็จสิ้นการแก้ไข' : (who ? 'แก้ไขข้อมูล' : 'เข้าสู่ระบบเพื่อแก้ไข');
+  $('#editToggle').textContent = who ? 'ออกจากระบบ' : 'เข้าสู่ระบบเพื่อแก้ไข';
+  $('#editMode').textContent = editOn ? 'เสร็จสิ้นการแก้ไข' : 'แก้ไขข้อมูล';
+  ['#addEntry','#addYear','#delYear'].forEach(s => $(s).hidden = !editOn);
   $('#who').hidden = !(canEdit && who); $('#who').textContent = who ? 'ผู้แก้ไข: ' + who : '';
-  $('#editbar').hidden = !(canEdit && editOn);
-  $('#editlbl').textContent = `โหมดแก้ไข · ปีงบประมาณ ${year}`;
+  $('#editbar').hidden = !(canEdit && who);
+  $('#editlbl').textContent = editOn ? `โหมดแก้ไข · ปีงบประมาณ ${year}` : 'เข้าสู่ระบบแล้ว · กด “แก้ไขข้อมูล” เพื่อเพิ่มหรือแก้ไขรายการ';
   const d = $('#delYear');
   d.disabled = years().length < 2;
   d.title = d.disabled ? 'ต้องมีอย่างน้อย 1 ปีงบประมาณ' : '';
@@ -607,8 +609,9 @@ $('#q').addEventListener('input', renderList);
 $('#area').addEventListener('change', renderList);
 $('#editToggle').addEventListener('click', () => {
   if(!fb){ toast(fbMsg, 6000); return; }
-  if(!who){ openModal('login'); return; } editOn = !editOn; delArmed = null; renderEdit(); renderList(); });
-$('#logout').addEventListener('click', () => { if(fb && fb.auth) fb.auth.signOut(); who = ''; editOn = false; delArmed = null; renderEdit(); renderList(); toast('ออกจากระบบแล้ว', 2500); });
+  if(!who){ openModal('login'); return; }
+  fb.auth.signOut(); who = ''; editOn = false; delArmed = null; renderEdit(); renderList(); toast('ออกจากระบบแล้ว', 2500); });
+$('#editMode').addEventListener('click', () => { editOn = !editOn; delArmed = null; renderEdit(); renderList(); });
 $('#addEntry').addEventListener('click', () => openModal('entry'));
 $('#addYear').addEventListener('click', () => openModal('year'));
 $('#pdfBtn').addEventListener('click', () => openModal('pdf'));
