@@ -7,7 +7,8 @@
 ## ไฟล์ใน repository นี้
 | ไฟล์ | ใช้ทำอะไร |
 |---|---|
-| `index.html` | หน้าเว็บ |
+| `index.html` | หน้าเว็บสำหรับผู้ชม (ดู ค้นหา ดาวน์โหลด PDF ไม่มีปุ่มแก้ไข) |
+| `admin.html` | หน้าผู้ดูแล สำหรับครูเข้าสู่ระบบและแก้ไขข้อมูล |
 | `firebase-config.js` | ค่าการเชื่อมต่อ Firebase (ต้องแก้ตามขั้นตอนที่ 2) |
 | `firestore.rules` | กฎสิทธิ์ของฐานข้อมูล (คัดลอกไปวางในขั้นตอนที่ 4) |
 
@@ -37,7 +38,7 @@ Build → Firestore Database → Create database → เลือก location `a
 Authentication → Settings → User actions → เอาเครื่องหมายออกที่ "Enable create (sign-up)" → Save
 
 **7. อัปโหลดขึ้น GitHub และเปิด GitHub Pages**
-อัปโหลด `index.html`, `firebase-config.js`, `firestore.rules`, `README.md` ขึ้น repository
+อัปโหลด `index.html`, `admin.html`, `firebase-config.js`, `firestore.rules`, `README.md` ขึ้น repository
 Settings → Pages → Deploy from a branch → `main` / `(root)` → Save → รอ 1–2 นาที
 
 **8. อนุญาตโดเมน GitHub ใน Firebase**
@@ -45,7 +46,7 @@ Authentication → Settings → Authorized domains → Add domain → ใส่ 
 
 ## การใช้งาน
 - ทุกคนเปิดดู ค้นหา และดาวน์โหลด PDF ได้โดยไม่ต้องเข้าสู่ระบบ
-- กด "เข้าสู่ระบบเพื่อแก้ไข" → ชื่อผู้ใช้ = ชื่อจริง (เช่น `วีนัส`) · รหัสผ่าน = เบอร์โทรศัพท์
+- ครูแก้ไขข้อมูลที่ `https://<ชื่อบัญชี>.github.io/<ชื่อ repository>/admin.html` → ชื่อผู้ใช้ = ชื่อจริง (เช่น `วีนัส`) · รหัสผ่าน = เบอร์โทรศัพท์
 - ครั้งแรกที่ฐานข้อมูลยังว่าง หน้าเว็บจะแสดงข้อมูลปี 2569 ที่ฝังในไฟล์ เมื่อมีคนบันทึกครั้งแรก ข้อมูลจะถูกเก็บขึ้น Firebase
 - ระบบจำการเข้าสู่ระบบเฉพาะแท็บที่เปิดอยู่ ปิดแท็บแล้วต้องเข้าสู่ระบบใหม่
 - ถ้าครูเปลี่ยนเบอร์โทร: Firebase → Authentication → Users → เลือกบัญชี (t01 = ลำดับ 1 ในไฟล์บุคลากร) → Reset password

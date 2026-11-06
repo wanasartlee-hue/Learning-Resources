@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ผู้ดูแล · แหล่ง/องค์กร ส่งเสริมการเรียนรู้</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=K2D:wght@400;500;600;700;800&display=swap">
+<style>body{margin:0}img{max-width:100%}</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+</head>
+<body>
+<style id="st">
+/* Layout: deep-purple header band with fiscal-year picker → category tabs with counts → search + ตำบล filter → card grid. Editors get an edit bar and a form sheet. */
+:root{
+  --bg:#f7f5fb; --surface:#ffffff; --fg:#1e1530; --muted:#62577a; --line:#e3dcef;
+  --header:#4a1d7f; --header-ink:#ffffff; --purple:#5b2a91; --purple-soft:#efe7f8;
+  --yellow:#f5c518; --yellow-soft:#fdf3c4; --on-yellow:#2a1d00;
+  --chip:#ece6f4; --focus:#7b3fe4; --danger:#b42318; --scrim:rgba(20,10,35,.55);
+  --font:"K2D","Leelawadee UI","Tahoma",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#130e1c; --surface:#1d1628; --fg:#ede7f6; --muted:#a99cbe; --line:#332848;
+  --header:#2e1350; --header-ink:#f5f0fc; --purple:#c7a4f6; --purple-soft:#2a1f3d;
+  --yellow:#f5c518; --yellow-soft:#3a3112; --on-yellow:#2a1d00;
+  --chip:#2a2138; --focus:#c7a4f6; --danger:#ff8a80; --scrim:rgba(0,0,0,.65); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#130e1c; --surface:#1d1628; --fg:#ede7f6; --muted:#a99cbe; --line:#332848;
+  --header:#2e1350; --header-ink:#f5f0fc; --purple:#c7a4f6; --purple-soft:#2a1f3d;
+  --yellow:#f5c518; --yellow-soft:#3a3112; --on-yellow:#2a1d00;
+  --chip:#2a2138; --focus:#c7a4f6; --danger:#ff8a80; --scrim:rgba(0,0,0,.65); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15.5px;line-height:1.6}
+button,input,select,textarea{font:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{background:var(--header);color:var(--header-ink);position:relative}
+header .wrap{padding-block:30px 32px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+header .titles{min-width:0;flex:1 1 100%}
+.hbar{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+.who{font-size:13.5px;opacity:.9;margin-right:auto;margin-left:10px}
+header::after{content:"";position:absolute;inset:auto 0 0 0;height:8px;
+  background:repeating-linear-gradient(90deg,var(--yellow) 0 18px,transparent 18px 24px,var(--yellow) 24px 28px,transparent 28px 36px)}
+.eyebrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:16px;font-weight:600;margin:0 0 6px}
+.eyebrow select{background:transparent;color:var(--yellow);border:1.5px solid var(--yellow);border-radius:6px;padding:1px 6px;font-weight:700;font-size:16px;cursor:pointer}
+.eyebrow select option{color:#1e1530;background:#fff}
+h1{font-weight:800;font-size:clamp(28px,4.6vw,46px);line-height:1.25;margin:0;text-wrap:balance}
+h1 .slash{color:var(--yellow)}
+.sub{margin:6px 0 0;font-size:17px;opacity:.9}
+.btn{border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:14.5px}
+.btn:hover{border-color:var(--purple)}
+.btn.primary{background:var(--purple);border-color:var(--purple);color:var(--surface)}
+.btn.yellow{background:var(--yellow);border-color:var(--yellow);color:var(--on-yellow)}
+.btn.danger{color:var(--danger);border-color:currentColor;background:transparent}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding-block:22px 8px}
+.tab{all:unset;cursor:pointer;background:var(--surface);color:var(--fg);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tab:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.tab .n{font-size:30px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--purple)}
+.tab .t{font-weight:600;font-size:14.5px;line-height:1.35}
+.tab[aria-selected="true"]{background:var(--header);border-color:var(--header);color:var(--header-ink)}
+.tab[aria-selected="true"] .n{color:var(--yellow)}
+.editbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--yellow-soft);border:1.5px dashed var(--yellow);border-radius:10px;padding:10px 12px;margin-top:8px}
+.editbar .lbl{font-weight:700;margin-right:auto;font-size:14.5px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding-block:12px}
+.search{flex:1 1 280px;min-width:0;position:relative}
+.search input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--muted);fill:none}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.tools select{padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);flex:0 1 220px;min-width:0}
+.desc{color:var(--muted);margin:4px 0 0;font-size:14.5px}
+.count{color:var(--muted);font-size:14px;margin:0;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;padding:8px 0 40px;list-style:none;margin:0}
+.card{background:var(--surface);border:2px solid var(--yellow);border-radius:10px;padding:16px 18px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;min-width:0}
+.no{font-weight:800;color:var(--purple);font-size:19px;font-variant-numeric:tabular-nums;min-width:1.8em;line-height:1.5}
+.body{min-width:0;display:flex;flex-direction:column;gap:6px}
+.name{font-weight:700;font-size:16.5px;line-height:1.45;margin:0;text-wrap:pretty}
+.skill{align-self:flex-start;background:var(--yellow-soft);color:var(--fg);border-radius:6px;padding:2px 9px;font-size:14px;font-weight:600}
+.row{display:flex;gap:8px;font-size:14.5px;color:var(--muted);align-items:flex-start}
+.row svg{flex:none;width:15px;height:15px;margin-top:4px;stroke:currentColor;fill:none;stroke-width:1.8}
+.row b{font-weight:600;color:var(--fg)}
+.area{font-size:12.5px;background:var(--chip);color:var(--muted);border-radius:99px;padding:1px 10px;align-self:flex-start}
+.phone{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.phone .num{font-variant-numeric:tabular-nums;color:var(--fg);font-weight:600;user-select:all}
+.copy{font-size:12.5px;padding:2px 10px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer}
+.copy:hover{color:var(--fg);border-color:var(--muted)}
+.cardact{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.cardact .btn{padding:3px 10px;font-size:13px}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:48px 0}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:13.5px}
+footer .wrap{padding-block:18px 28px}
+mark{background:var(--yellow);color:var(--on-yellow);border-radius:3px;padding:0 1px}
+.modal{position:fixed;inset:0;background:var(--scrim);z-index:50;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--surface);color:var(--fg);border-radius:12px;width:min(540px,100%);max-height:100%;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:12px;border-top:6px solid var(--yellow)}
+.sheet h2{margin:0;font-size:21px;font-weight:800}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-weight:600;font-size:14px}
+.fld input,.fld select,.fld textarea{padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
+.fld .hint{font-size:13px;color:var(--muted)}
+.radios{display:flex;flex-direction:column;gap:6px}
+.radios label{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-weight:500}
+.fld .radios input[type=radio]{width:auto;flex:none;margin:0}
+.fld .radios select{width:auto;padding:4px 8px}
+.pw{position:relative}
+.fld .pw input{padding-right:46px}
+.eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:38px;height:34px;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center}
+.eye:hover{color:var(--fg);background:var(--chip)}
+.eye svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.merr{color:var(--danger);margin:0;font-size:14px;min-height:1em}
+.mact{display:flex;gap:8px;justify-content:flex-end}
+.btn.outline-y{background:transparent;color:var(--yellow);border-color:var(--yellow)}
+.btn.outline-y:hover{background:var(--yellow);color:var(--on-yellow)}
+/* PDF report pages: a deliberately light, print-style look, rendered off-screen */
+#rpt{position:fixed;left:-20000px;top:0;z-index:-1}
+.rpage{width:1123px;height:794px;background:#ffffff;color:#1e1530;font-family:var(--font);padding:36px 44px 26px;display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.rhead{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;border-bottom:3px solid #f5c518;padding-bottom:8px;font-size:13px;color:#4a1d7f;font-weight:600}
+.rbody{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.rfoot{display:flex;justify-content:space-between;font-size:12px;color:#62577a;border-top:1px solid #e3dcef;padding-top:6px}
+.rcover{display:flex;flex-direction:column;gap:6px;padding-top:40px}
+.rcover .k{font-size:18px;font-weight:600;color:#62577a;margin:0}
+.rcover h1{font-size:40px;color:#4a1d7f;margin:0;line-height:1.3}
+.rcover .y{display:inline-block;align-self:flex-start;background:#f5c518;color:#2a1d00;font-weight:800;font-size:22px;border-radius:8px;padding:2px 14px;margin-top:6px}
+.rsum{border-collapse:collapse;margin-top:28px;width:560px;font-size:17px}
+.rsum td{padding:10px 14px;border-bottom:1px solid #e3dcef}
+.rsum td:last-child{text-align:right;font-weight:800;color:#4a1d7f;font-variant-numeric:tabular-nums}
+.rsum tr.tot td{border-bottom:none;border-top:2px solid #4a1d7f;font-weight:800}
+.rh2{margin:0;font-size:20px;font-weight:800;color:#4a1d7f;display:flex;gap:10px;align-items:baseline}
+.rh2 small{font-size:14px;color:#62577a;font-weight:600}
+.rtbl{border-collapse:collapse;width:100%;font-size:13.5px;line-height:1.45;table-layout:fixed}
+.rtbl th{background:#4a1d7f;color:#ffffff;font-weight:600;text-align:left;padding:7px 9px}
+.rtbl td{padding:6px 9px;border-bottom:1px solid #e3dcef;vertical-align:top;overflow-wrap:anywhere}
+.rtbl tr:nth-child(even) td{background:#f7f5fb}
+.rtbl td.c,.rtbl th.c{text-align:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--header);color:var(--header-ink);padding:10px 18px;border-radius:99px;z-index:60;font-weight:600;max-width:calc(100% - 32px);text-align:center}
+@media (max-width:720px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}}
+</style>
+
+<div id="shell">
+<header>
+  <div class="wrap">
+    <div class="titles">
+      <p class="eyebrow"><span style="background:var(--yellow);color:var(--on-yellow);border-radius:6px;padding:0 8px">หน้าผู้ดูแล</span><span>ทำเนียบ ปีงบประมาณ พ.ศ.</span><select id="year" aria-label="เลือกปีงบประมาณ"></select></p>
+      <h1>แหล่ง<span class="slash">/</span>องค์กร <span style="white-space:nowrap">ส่งเสริมการเรียนรู้</span></h1>
+      <p class="sub">อำเภอเทิง จังหวัดเชียงราย</p>
+    </div>
+    <div class="hbar"><button class="btn outline-y" id="pdfBtn" hidden>ดาวน์โหลด PDF</button><a href="./" style="color:var(--yellow);font-weight:600;font-size:14.5px">← ไปหน้าเว็บหลัก</a><span class="who" id="who" hidden></span><button class="btn yellow" id="editToggle" hidden>แก้ไขข้อมูล</button></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="editbar" id="editbar" hidden>
+    <span class="lbl" id="editlbl">โหมดแก้ไข</span>
+    <button class="btn primary" id="addEntry">+ เพิ่มรายการในหมวดนี้</button>
+    <button class="btn" id="addYear">+ เพิ่มปีงบประมาณ</button>
+    <button class="btn danger" id="delYear">ลบปีงบประมาณนี้</button>
+    <button class="btn" id="logout">ออกจากระบบ</button>
+  </div>
+  <p class="desc" id="desc"></p>
+  <div class="tools">
+    <label class="search" for="q">
+      <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="q" type="search" placeholder="ค้นหาชื่อ ที่อยู่ ผู้ดูแล หรือความชำนาญ" aria-label="ค้นหา">
+    </label>
+    <select id="area" aria-label="กรองตามตำบล"></select>
+    <p class="count" id="count"></p>
+  </div>
+  <ul class="grid" id="list"></ul>
+</main>
+
+<footer><div class="wrap" id="foot"></div></footer>
+
+<div class="modal" id="modal" hidden>
+  <form class="sheet" id="form" novalidate>
+    <h2 id="mtitle"></h2>
+    <div id="mfields" style="display:flex;flex-direction:column;gap:12px"></div>
+    <p class="merr" id="merr"></p>
+    <div class="mact">
+      <button type="button" class="btn" id="mcancel">ยกเลิก</button>
+      <button type="submit" class="btn primary" id="msave">บันทึก</button>
+    </div>
+  </form>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div id="rpt" hidden aria-hidden="true"></div>
+</div>
+
+<script type="application/json" id="state">{"years": {"2569": {"learn": [{"no": 1, "name": "ศูนย์เรียนรู้การเพิ่มประสิทธิภาพการผลิตสินค้าเกษตร", "addr": "44 หมู่ที่ 23 ต.งิ้ว อ.เทิง จ.เชียงราย", "keeper": "นางกัญญ์วรา สีหมนตรี", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 2, "name": "ศูนย์วิสาหกิจชุมชนแปรรูปทางการเกษตร แม่ลอยไร่", "addr": "แม่ลอยไร่ หมู่ 5 ตำบลแม่ลอย อำเภอเทิง จังหวัดเชียงราย", "keeper": "นางสาวดวงกมล เข็มเพชร", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 3, "name": "ศกร.ระดับตำบลเชียงเคี่ยน", "addr": "144 หมู่4 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "keeper": "นางธันยพัต ปกครองบ้าน", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 4, "name": "บ่อกุ้งครัวหนูแดง", "addr": "ม.7 ต.เวียง อ.เทิง จ.เชียงราย", "keeper": "นส.รัชฎาภรณ์ สุริยนต์", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 5, "name": "ฐานการเรียนรู้ \"ม้ง เฮอริเทจ (Hmong Heritage)", "addr": "ม.17 ต.ตับเต่า อ.เทิง จ.เชียงราย", "keeper": "นายวิมล สุทธิจันทร์", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 6, "name": "ทุ่งต้อมเกษตรอินทรีย์Tungtom organics village", "addr": "บ้านทุ่งต้อม ม.5 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย", "keeper": "นายศุภชัย แก้วกระจ่าง", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 7, "name": "ศูนย์ส่งเสริมการเรียนรู้เศรษฐกิจพอเพียง \"เส้นสายลายสร้างเงิน", "addr": "ม.3 ต.หนองแรด อ.เทิง จ.เชียงราย", "keeper": "นางสาวรวินท์นิภา จันทวิมล", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 8, "name": "หนองบัวฟาร์ม ศูนย์เรียนเกษตรพอเพียง ตามแนวพระราชดำริ", "addr": "30 ม.5 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "keeper": "นางวีนัส สรรพสุข", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}], "read": [{"no": 1, "name": "ศกร.ระดับตำบลงิ้ว", "addr": "หมู่ที่ 8 ต.งิ้ว อ.เทิง จ.เชียงราย", "keeper": "นางกัญญ์วรา สีหมนตรี", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 2, "name": "ศกร.ระดับตำบลแม่ลอย", "addr": "หมู่ที่ 5 ต.แม่ลอย อ.เทิง จ.เชียงราย", "keeper": "นางสาวดวงกมล เข็มเพชร", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 3, "name": "มุมหนังสือหมู่บ้าน บ้านภูเขาแก้ว", "addr": "หมู่8 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "keeper": "นางธันยพัต ปกครองบ้าน", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 4, "name": "บ้านหนังสือชุมชน บ้านบุญธิดา", "addr": "122 หมู่10 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "keeper": "นางธันยพัต ปกครองบ้าน", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "owner": "นางสาวบุญธิดา เข็มทองสวัสดิ์", "area": "ต.เชียงเคี่ยน"}, {"no": 5, "name": "ศกร.ระดับตำบลเชียงเคี่ยน", "addr": "144 หมู่ 4 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "keeper": "นางธันยพัต ปกครองบ้าน", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 6, "name": "ห้องสมุดประชาชนอำเภอเทิง", "addr": "เลขที่1 ม.1 ต.เวียง อ.เทิง จ.เชียงราย", "keeper": "นางสาวเจนจิรา สีรัตน์", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 7, "name": "บ้านหนังสือชุมชน ม.5", "addr": "ที่ทำการผู้ใหญ่บ้าน ม.5 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "keeper": "นางวีนัส สรรพสุข", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}, {"no": 8, "name": "บ้านหนังสือชุมชน ม.2", "addr": "ที่ทำการผู้ใหญ่บ้าน ม.2 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "keeper": "นางวีนัส สรรพสุข", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}, {"no": 9, "name": "ร้านนายชาตรี", "addr": "บ้านเลขที่ 29 หมู่ 3 ต.ตับเต่า อ.เทิง จ.เชียงราย", "keeper": "นายประสิทธิ์ วิชัย", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 10, "name": "บ้านนางบัวผา", "addr": "บ้านเลขที่ 4 หมู่ 5 ต.ตับเต่า อ.เทิง จ.เชียงราย", "keeper": "นายประสิทธิ์ วิชัย", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 11, "name": "ที่ทำการผู้ใหญ่บ้านทุ่งโห้ง", "addr": "หมู่ 22 ต.เวียง อ.เทิง จ.เชียงราย", "keeper": "นางสาวรัชฎาภรณ์ สุริยนต์", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 12, "name": "วิสาหกิจชุมชนบ้านร่องริว", "addr": "หมู่ 12 ต.เวียง อ.เทิง จ.เชียงราย", "keeper": "นางสาวรัชฎาภรณ์ สุริยนต์", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 13, "name": "ที่ทำการผู้ใหญ่บ้านหมู่ 3", "addr": "หมู่ 3 ต.ปล้อง อ.เทิง จ.เชียงราย", "keeper": "นางพรทิพย์ สุขบัญชาชัย", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 14, "name": "ที่ทำการผู้ใหญ่บ้านหมู่ 4", "addr": "หมู่ 4 ต.ปล้อง อ.เทิง จ.เชียงราย", "keeper": "นางพรทิพย์ สุขบัญชาชัย", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 15, "name": "ร้านเสริมสวยอ้อยบิวตี้", "addr": "หมู่ 1 ต.งิ้ว อ.เทิง จ.เชียงราย", "keeper": "นางกัญญ์วรา สีหมนตรี", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 16, "name": "ที่ทำการผู้ใหญ่บ้านหมู่ 21", "addr": "หมู่ 21 ต.งิ้ว อ.เทิง จ.เชียงราย", "keeper": "นางกัญญ์วรา สีหมนตรี", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 17, "name": "บ้านปราชญ์ชาวบ้าน", "addr": "บ้านเกี๋ยงลุ่ม หมู่ 3 ต.แม่ลอย อ.เทิง จ.เชียงราย", "keeper": "นางสาวดวงกมล เข็มเพชร", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 18, "name": "ร้านค้าในชุมชนตำบลแม่ลอย", "addr": "บ้านเกี๋ยงดอยสูงเนิน หมู่ 10 ต.แม่ลอย อ.เทิง จ.เชียงราย", "keeper": "นางสาวดวงกมล เข็มเพชร", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 19, "name": "บ้านนายมานพ", "addr": "บ้านเลขที่ 162 หมู่ 5 ต.หนองแรด อ.เทิง จ.เชียงราย", "keeper": "นางสาวรวินท์นิภา จันทวิมล", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 20, "name": "บ้านหนังสือชุมชน บ้านนางมาลี ค้าแก้ว", "addr": "เลขที่21 ม. 19 ต. หงาว อ. เทิง จ. เชียงราย", "keeper": "นางสาวเด่นนภา นิทะโน", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 21, "name": "บ้านพ่อหลวงเพิ่มพูน", "addr": "หมู่ 3 ต.หนองแรด อ.เทิง จ.เชียงราย", "keeper": "นางสาวรวินท์นิภา จันทวิมล", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 22, "name": "บ้านหนังสือชุมชน ร้านกาแฟลองมากอย", "addr": "บ้านต้นยาง ม. 18 ตำบลหงาว อ. เทิง จ. เชียงราย", "keeper": "นางสาวเด่นนภา นิทะโน", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 23, "name": "ที่ทำการผู้ใหญ่บ้าน", "addr": "หมู่ 1 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย", "keeper": "นายศุภชัย แก้วกระจ่าง", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 24, "name": "บ้านหนังสือชุมชน ชโลบลของชำ", "addr": "หมู่ 10 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย", "keeper": "นายศุภชัย แก้วกระจ่าง", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 25, "name": "ร้านชาตรีบาร์เบอร์", "addr": "หมู่ 3 บ้านไคร้ ต.ตับเต่า อ.เทิง จ.เชียงราย", "keeper": "นายประสิทธิ์ วิชัย", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 26, "name": "ร้านบัวผาการค้า", "addr": "หมู่ 5 บ้านโจ้โก้ ต.ตับเต่า อ.เทิง จ.เชียงราย", "keeper": "นายประสิทธิ์ วิชัย", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 27, "name": "มุมหนังสือหมู่บ้าน บ้านโจ้โก้", "addr": "หมู่ 5 บ้านโจ้โก้ ต.ตับเต่า อ.เทิง จ.เชียงราย", "keeper": "นายประสิทธิ์ วิชัย", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}], "network": [{"no": 1, "name": "เทศบาลตำบลงิ้ว", "addr": "หมู่ที่ 8 ต.งิ้ว อ.เทิง จ.เชียงราย", "role": "ส่งเสริมและสนับสนุนอาคารเรียน และวิทยากรให้ความรู้", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 2, "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลร่มโพธิ์ไทย", "addr": "หมู่ที่ 21 ต.ตับเต่า อ.เทิง จ.เชียงราย", "role": "เป็นวิทยากรให้ความรู้เรื่องสุขภาพของชุมชน", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 3, "name": "วัดแม่ลอยไร่", "addr": "หมู่ 5 ต.แม่ลอย อ.เทิง จ.เชียงราย", "role": "ส่งเสริมสนับสนุนอาคารเรียน", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 4, "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลแม่ลอย", "addr": "หมู่ 5 ต.แม่ลอย อ.เทิง จ.เชียงราย", "role": "เป็นวิทยากรให้ความรู้เรื่องสุขภาพของชุมชน", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 5, "name": "มูลนิธิศุภนิมิตแห่งประเทศไทย โปรแกรมเชียงราย", "addr": "หมู่ 3 ต.ตับเต่า อ.เทิง จ.เชียงราย", "role": "งบประมาณการฝึกอบรมอาชีพ", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 6, "name": "เทศบาลตำบลเชียงเคี่ยน", "addr": "หมู่ 7 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "role": "เป็นวิทยากรให้ความรู้การดูแลสุขภาพ", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 7, "name": "องค์การบริหารส่วนตำบลเวียง", "addr": "345 ม.12 ต.เวียง อ.เทิง จ.เชียงราย", "role": "หน่วยงานสนับสนุนการจัดกิจกรรม", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 8, "name": "เทศบาลตำบลปล้อง", "addr": "หมู่ 5 ต.ปล้อง อ.เทิง จ.เชียงราย", "role": "จัดกิจกรรมส่งเสริมการเรียนรู้เกี่ยวกับสุขภาพใน รร.ผู้สูงอายุ", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 9, "name": "อบต.ปล้อง", "addr": "หมู่ 10 ต.ปล้อง อ.เทิง จ.เชียงราย", "role": "ส่งเสริมและสนับสนุนอาคารเรียน", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 10, "name": "อบต.หนองแรด", "addr": "หมู่3 ต.หนองแรด อ.เทิง จ.เชียงราย", "role": "ส่งเสริมและสนับสนุนอาคารเรียน", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 11, "name": "เทศบาลตำบลเวียง", "addr": "ม.15 ต.เวียง อ.เทิง จ.เชียงราย", "role": "หน่วยงานสนับสนุนการจัดกิจกรรม", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 12, "name": "ที่ทำการผู้ใหญ่บ้าน", "addr": "หมู่14 ต.ตับเต่า อ.เทิง จ.เชียงราย", "role": "ช่วยประชาสัมพันธ์งานกิจกรรม/โครงการ", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 13, "name": "โรงเรียนเทิงวิทยาคม", "addr": "เลขที่ 278 หมู่ 1 ตำบลเวียง อำเภอเทิง จังหวัดเชียงราย 57160", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ n-net", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 14, "name": "โรงเรียนศรีดอนไชยวิทยา", "addr": "106 หมู่ 3 ตำบลศรีดอนไชย อำเภอเทิง จังหวัดเชียงราย 57230", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ปลายภาคเรียน", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 15, "name": "โรงเรียนสักสันเชียงใหม่วิทยาคม", "addr": "154 หมู่ 5 ตำบลงิ้ว อำเภอเทิง จังหวัดเชียงราย 57230", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ปลายภาคเรียน และวิทยากรให้ความรู้", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 16, "name": "โรงเรียนเวียงเทิง(เทิงทำนุประชา)", "addr": "4 หมู่ 1 ตำบลเวียง อำเภอเทิง จังหวัดเชียงราย 57160", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ปลายภาคเรียน และวิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 17, "name": "โรงเรียนบ้านบุญนาค", "addr": "8 หมู่ 20 ตำบลหงาว อำเภอเทิง จังหวัดเชียงราย 57160", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ปลายภาคเรียน", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 18, "name": "โรงเรียนบ้านรักแผ่นดิน", "addr": "106 หมู่ 15 ตำบลตับเต่า อำเภอเทิง จังหวัดเชียงราย", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ปลายภาคเรียน", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 19, "name": "โรงเรียนบ้านขุนห้วยไคร้", "addr": "53 หมู่ 14 ตำบลตับเต่า อำเภอเทิง จังหวัดเชียงราย 57160", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ปลายภาคเรียน", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 20, "name": "เรือนจำอำเภอเทิง", "addr": "ม.23 ต.เวียง อ.เทิง จ.เชียงราย", "role": "จัดการเรียนการสอน คุณวุฒิตามระดับ และส่งเสริมการเรียนรู้ตลอดชีวิต", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 21, "name": "อำเภอเทิง", "addr": "เลขที่ี่1 ม.1 ต.เวียง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 22, "name": "สาธารณสุขอำเภอเทิง", "addr": "ม.1 ต.เวียง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 23, "name": "ศูนย์ต่อต้านยาเสพติดอำเภอเทิง", "addr": "ม.1 ต.เวียง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 24, "name": "สำนักงานคุมประพฤติเชียงราย สาขาเทิง", "addr": "เลขที่ 220–222 หมู่ 2 ถนนเชียงราย–เทิง ตำบลเวียง อำเภอเทิง จังหวัดเชียงราย 57160", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 25, "name": "โรงเรียนสหศาสตร์วิทยา", "addr": "ต.แม่ยาว อ.เมืองเชียงราย จ.เชียงราย", "role": "วิทยากรให้ความรู้", "tambon": "แม่ยาว", "amphoe": "เมืองเชียงราย", "area": "นอกอำเภอเทิง"}, {"no": 26, "name": "โรงเรียนบ้านสันสลีก", "addr": "ต.สันสลีก อ.พญาเม็งราย จ.เชียงราย", "role": "วิทยากรให้ความรู้", "tambon": "สันสลีก", "amphoe": "พญาเม็งราย", "area": "นอกอำเภอเทิง"}, {"no": 27, "name": "โรงเรียนปล้องวิทยาคม", "addr": "เลขที่12 ม.9 ต.ปล้อง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 28, "name": "โรงเรียนเทิคนิคเทิง", "addr": "ม.10 ต.เวียง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 29, "name": "กองทุนแม่ของแผ่นดิน อำเภอเทิง", "addr": "เลขที่ี่1 ม.1 ต.เวียง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 30, "name": "พัฒนาชุมชนอำเภอเทิง", "addr": "ม.10 ต.เวียง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 31, "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลแม่ยาว", "addr": "หมู่ 6 ต.แม่ยาวอ.เมือง จ.เชียงราย", "role": "หน่วยงานสนับสนุนการจัดกิจกรรม", "tambon": "แม่ยาว", "amphoe": "เมืองเชียงราย", "area": "นอกอำเภอเทิง"}, {"no": 32, "name": "ศูนย์พัฒนาบุคลากรทางการลูกเสือ ยุวกาชาด และกิจกรรมเยาวชน จังหวัดเชียงราย", "addr": "ต.แม่ยาว อ.เมืองเชียงราย จ.เชียงราย", "role": "หน่วยงานสนับสนุนการจัดกิจกรรม", "tambon": "แม่ยาว", "amphoe": "เมืองเชียงราย", "area": "นอกอำเภอเทิง"}, {"no": 33, "name": "โรงพยาบาลเทิง", "addr": "ม.20 ต.เวียง อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 34, "name": "มูลนิธิแสงธรรมสาธารณกุศลเชียงราย", "addr": "266/2หมู่5ต.รอบเวียง อ.เมือง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "รอบเวียง", "amphoe": "เมืองเชียงราย", "area": "นอกอำเภอเทิง"}, {"no": 35, "name": "รพสต.บ้านรักแผ่นดิน", "addr": "หมู่ 15 ต.ตับเต่า อ.เทิง จ.เชียงราย", "role": "ร่วมดำเนินงานโครงการ และ วิทยากรให้ความรู้", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 36, "name": "โรงเรียนหนองแรดวิทยาคม", "addr": "ตำบลหนองแรด อำเภอเทิง จังหวัดเชียงราย", "role": "สนับสนุนสถานที่สอบวัดผลสัมฤทธิ์ปลายภาคเรียน และวิทยากรให้ความรู้", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 37, "name": "เทศบาลตำบลสันทรายงาม", "addr": "ม.3 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "role": "สนับสนุนวิทยากรอบรมโครงการต่าง ๆ", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}, {"no": 38, "name": "อบต.ตับเต่า", "addr": "ม.8 ต.ตับเต่า อ.เทิง จ.เชียงราย", "role": "สนับสนุนวิทยากรอบรมโครงการต่าง ๆ", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 39, "name": "รพ.สต.ตับเต่า", "addr": "ม.8 ต.ตับเต่า อ.เทิง จ.เชียงราย", "role": "สนับสนุนวิทยากรอบรมโครงการต่าง ๆ", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}], "wisdom": [{"no": 1, "name": "นายอัด กันยา", "skill": "การสานตะกร้าจากเส้นพลาสติก", "addr": "37 หมู่ที่ 2 ต.งิ้ว อ.เทิง จ.เชียงราย", "phone": "084-370-8796", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 2, "name": "นางสาวเกตณภางค์ ติ๊ปกรณ์", "skill": "การทำตะกร้าหวาย", "addr": "5 หมู่ 5 ต.แม่ลอย อ.เทิง จ.เชียงราย", "phone": "084-487-1726", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 3, "name": "นางวันดี ตันติ๊บ", "skill": "ผลิตภัณฑ์จากผักตบชวา", "addr": "43 หมู่ 3 ต.แม่ลอย อ.เทิง จ.เชียงราย", "phone": "063-003-2363", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 4, "name": "นางสาวมายา แซ่วื่อ", "skill": "การเพ้นท์กระเป๋า การประดิษฐ์ตุ๊กตาชนเผ่า", "addr": "84 หมู่ที่ 12 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "098-869-6955", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 5, "name": "นางสุวรรณ อินชน", "skill": "หัตถกรรมจักสานไม้ไผ่", "addr": "126 หมู่ 10 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "phone": "", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 6, "name": "นางเตชินี โชคกิติเจริญ", "skill": "การแปรรูปกล้วย", "addr": "174 หมู่ 4 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "phone": "", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 7, "name": "นางเพลิน จำปานคร", "skill": "ผลิตภัณฑ์จากสมุนไพร", "addr": "123 ม.15 ต.งิ้ว อ.เทิง จ.เชียงราย", "phone": "", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 8, "name": "นางอัมพร รุจิพงศ์ไพศาล", "skill": "การปักผ้าเผ่าเมี่ยน", "addr": "32 ม.14 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 9, "name": "น.ส มายา แซ่วื่อ", "skill": "การแปรรูปหมวกจากผ้าปักม้ง", "addr": "109 ม.5 ต.ริมโขง อ.เชียงของ จ.เชียงราย", "phone": "", "tambon": "ริมโขง", "amphoe": "เชียงของ", "area": "นอกอำเภอเทิง"}, {"no": 10, "name": "นางประภารดี สุธรรมแปง", "skill": "ไม้กวาดดอกหญ้า และ การประดิษฐ์ดอกไม้จากลวดกำมะหยี่", "addr": "97 หมู่8 ต.หงาว อ.เทิง จ.เชียงราย", "phone": "062-891-5766", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 11, "name": "นางมาลี ค้าแก้ว", "skill": "การสานเส้นพลาสติก และหัตถกรรมโคมและตุง", "addr": "21 ม. 19 ตำบลหงาว อ. เทิง จ. เชียงราย", "phone": "", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 12, "name": "นายสมบูรณ์ ไชยมงคล", "skill": "การทำผลิตภัณฑ์จากหวาย", "addr": "ม.3 ต.หนองแรด อ.เทิง จ.เชียงราย", "phone": "", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 13, "name": "นางประนอม รู้กายา", "skill": "การประดิษฐ์ดอกไม้จันทน์", "addr": "ม.5 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "086-204-7280", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 14, "name": "นางแก้ว ขิไสยา", "skill": "การทำโคมและตุง", "addr": "101ม.22 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "081-029-3655", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 15, "name": "นางบัวลอย เครือเถาว์", "skill": "การทำบายศรีผ้า/ผลิตภัณฑ์จากไหมพรม/การแปรรูปพริก", "addr": "101ม.22 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "082-502-5506", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 16, "name": "นางธีราภรณ์ การินทา", "skill": "ผลิตภัณฑ์จากหวาย", "addr": "ม.3 ต.หนองแรด อ.เทิง จ.เชียงราย", "phone": "", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 17, "name": "นายแก้ว ธิใจ", "skill": "การทำโคมล้านนา", "addr": "50 ม.1 ต.ปล้อง อ.เทิง จ.เชียงราย", "phone": "093-146-2474", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 18, "name": "นางบุญชู ชาติไทย", "skill": "การแปรรูปปลา", "addr": "38 ม.5 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "phone": "064-161-4712", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}, {"no": 19, "name": "นางศิริวรรณ ถาบุญชู", "skill": "การแปรรูปมันฝรั่ง", "addr": "ม. 8 ตำบลหงาว อำเภอเทิง จังหวัดเชียงราย", "phone": "093-138-0412", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 20, "name": "น.ส.ปานทิพย์ กองแก้ว", "skill": "การทำพวงกุญแจจากไหมพรม", "addr": "140 ม.15 ต.เวียง อ.เทิง จ.เชียงราย", "phone": "098-790-3465", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 21, "name": "นางพิน วางวงศ์", "skill": "การทำพรมเช็ดเท้าจากเศษผ้า", "addr": "31 ม.10 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย 57230", "phone": "087-569-4919", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 22, "name": "นางเตชินี โชคกิติเจริญ", "skill": "การแปรรูปกล้วย", "addr": "174 ม.4 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "phone": "099-363-5395", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 23, "name": "นายเลาเก๋อ แซ่ฟ่า", "skill": "การตัดกระดาษเพื่อใช้งานพิธีของชาติพันธ์ม้ง", "addr": "1 ม.11 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "061-242-6004", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 24, "name": "นางอนุรี วิชัยเนตร", "skill": "ผลิตภัณฑ์จากหวาย", "addr": "146 ม.3 ต.หนองแรด อ.เทิง จ.เชียงราย", "phone": "061-660-1593", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 25, "name": "นางชุม ทำสวน", "skill": "การทำไม้กวาดดอกหญ้า", "addr": "98 ม.4 ต.ปล้อง อ.เทิง จ.เชียงราย", "phone": "081-084-8572", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 26, "name": "นางจรรยา แซงสว่าง", "skill": "การทอผ้าขาวม้า", "addr": "31 ม.3 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "phone": "061-625-6031", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}, {"no": 27, "name": "นายถาวร แก้วมูล", "skill": "หัตถกรรมจักสานไม้ไผ่", "addr": "153 ม.8 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย", "phone": "086-188-4945", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 28, "name": "นางพัด ยอดปา", "skill": "การทำตะกร้าหวาย", "addr": "127 หมู่ 5 ต.หนองแรด อ.เทิง จ.เชียงราย 57230", "phone": "081-289-9276", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 29, "name": "นางทองแดง วาโย", "skill": "การแปรรูปถั่วลิสง", "addr": "43 หมู่2 ตำบลภูซาง อำเภอภูซาง จังหวัดพะเยา", "phone": "093-182-5001", "tambon": "ภูซาง", "amphoe": "ภูซาง", "area": "นอกอำเภอเทิง"}, {"no": 30, "name": "นางนภาพร แซ่โซ้ง", "skill": "การทำปอกหมอนจากผ้าปักชนเผ่า", "addr": "94 ม.10 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 31, "name": "นางเครือวัลย์ แก้วปา", "skill": "การประดิษฐ์ดอกไม้จันทน์รักษ์โลก", "addr": "3 หมู่ 22 ต.ตับเต่า อ.เทิง จ.เชียงราย 57160", "phone": "", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 32, "name": "น.ส.มายา แซ่วื่อ", "skill": "การทำหมวกจากผ้าปักชนเผ่าม้ง", "addr": "109 ม.5 ต.ริมโขง อ.เชียงของ จ.เชียงราย", "phone": "098-869-6955", "tambon": "ริมโขง", "amphoe": "เชียงของ", "area": "นอกอำเภอเทิง"}, {"no": 33, "name": "น.ส.มรกต แซ่โซ้ง", "skill": "การเพ้นท์กระเป๋าผ้า", "addr": "51 ม.15 ต.ปอ อ.เวียงแก่น จ.เชียงราย", "phone": "084-370-8796", "tambon": "ปอ", "amphoe": "เวียงแก่น", "area": "นอกอำเภอเทิง"}, {"no": 34, "name": "นายเน้งป๋อ แซ่เฮ่อ", "skill": "ช่างไฟฟ้าเบื้องต้น", "addr": "138/1 ม.10 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "098-912-1864", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 35, "name": "นายชัยมงคล บุญเรือง", "skill": "ดนตรีพื้นบ้าน", "addr": "19 หมู่ 8 ต.แม่ลอย อ.เทิง จ.เชียงราย 57230", "phone": "", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 36, "name": "นางศรีคำ สันน้อย", "skill": "การทำขนมไทย", "addr": "14 หมู่ 6 ต.แม่ลอย อ.เทิง จ.เชียงราย 57230", "phone": "", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 37, "name": "นายศราวุธ จิตเจริญกุล", "skill": "ช่างซ่อมรถจักรยานยนต์เบื้องต้น", "addr": "153 ม.10 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "062-146-6794", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 38, "name": "นายเจษฎาวุฒิ ตู่เป็ง", "skill": "การป้องกันไฟป่าและหมอกควัน", "addr": "สถานีควบคุมไฟป่าภูชี้ฟ้า ตำบลตับเต่า อำเภอเทิง จ.เชียงราย / 92/2 ม.5 ต.ม่อนปิ่น อ.ฝาง จ.เชียงใหม่", "phone": "089-054-1641", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 39, "name": "นางปราณี เรืองกิจการ", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "87 ม.22 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "087-182-0113", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 40, "name": "นายวิสุทธิ์ ไชยปันดิ", "skill": "การปกครองระบอบประชาธิปไตย และผลิตภัณฑ์จากเส้นพลาสติก", "addr": "ม. 19 ตำบลหงาว อำเภอเทิง จังหวัดเชียงราย", "phone": "", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 41, "name": "นายภคิน ไกลถิ่น", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "86 ม.22 ต.เวียง อ.เทิง จ.เชียงราย", "phone": "081-995-7855", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 42, "name": "จ.อ.ณัฐวุฒิ จันทะขิน", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "เลขที่ 2 ม.3 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "phone": "098-484-9825", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}, {"no": 43, "name": "พันจ่าเอกอุทัย สมนวล", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "291 ม.10 ต.ปล้อง อ.เทิง จ.เชียงราย", "phone": "086-180-7584", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 44, "name": "นายชนะพงษ์พันธ์ นันต๊ะ", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "19 ม.4 ต.ปล้อง อ.เทิง จ.เชียงราย", "phone": "090-675-8901", "tambon": "ปล้อง", "amphoe": "เทิง", "area": "ต.ปล้อง"}, {"no": 45, "name": "นายสมนึก วิงวอน", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "ม.1 ต.หนองแรด อ.เทิง จ.เชียงราย", "phone": "", "tambon": "หนองแรด", "amphoe": "เทิง", "area": "ต.หนองแรด"}, {"no": 46, "name": "นางโสภา ดวงหาญ", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "136 ม.5 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย", "phone": "088-225-4058", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 47, "name": "นายศรีจันทร์ สุทธศิลป์", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "57 หมู่ 5 ต.แม่ลอย อ.เทิง จ.เชียงราย 57230", "phone": "", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 48, "name": "นายสุวรรณ คุ้ยเอี่ยม", "skill": "การปกครองระบอบประชาธิปไตย", "addr": "27 ม.4 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย 57230", "phone": "091-238-8136", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 49, "name": "นางมาลี วงศ์วุฒิ", "skill": "หัตถกรรมโคมและตุง", "addr": "21 ม.19 ต.หงาว อ.เทิง จ.เชียงราย", "phone": "085-615-7085", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 50, "name": "นางบุญชู ชาติไทย", "skill": "หัตถกรรมโคมและตุง", "addr": "38 ม.5 ต.สันทรายงาม อ.เทิง จ.เชียงราย", "phone": "", "tambon": "สันทรายงาม", "amphoe": "เทิง", "area": "ต.สันทรายงาม"}, {"no": 51, "name": "พระธายุกร ลุกลาม", "skill": "หัตถกรรมโคมและตุง", "addr": "16 วัดสวนดอก ม.25 ต.งิ้ว อ.เทิง จ.เชียงราย", "phone": "", "tambon": "งิ้ว", "amphoe": "เทิง", "area": "ต.งิ้ว"}, {"no": 52, "name": "นางพิน วางวงศ์", "skill": "หัตถกรรมโคมและตุง", "addr": "31 ม.10 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย 57230", "phone": "", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 53, "name": "นายอาชัน ธนะน้อย", "skill": "หัตถกรรมโคมและตุง", "addr": "159 ม.5 ต.แม่ลอย อ.เทิง จ.เชียงราย 57230", "phone": "062-423-8731", "tambon": "แม่ลอย", "amphoe": "เทิง", "area": "ต.แม่ลอย"}, {"no": 54, "name": "นางทองคำ เชื้อเมืองพาน", "skill": "หัตถกรรมโคมและตุง", "addr": "16 ม.4 ต.เชียงเคี่ยน อ.เทิง จ.เชียงราย 57230", "phone": "", "tambon": "เชียงเคี่ยน", "amphoe": "เทิง", "area": "ต.เชียงเคี่ยน"}, {"no": 55, "name": "น.ส.พิชญาภา ณรงค์ชัย", "skill": "การดำเนินชีวิตตามหลักปรัชญาของเศรษฐกิจพอเพียง", "addr": "220 ม.5 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย", "phone": "", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 56, "name": "นางนิพาพร ชมภูวงศ์", "skill": "การดำเนินชีวิตตามหลักปรัชญาของเศรษฐกิจพอเพียง", "addr": "166 ม.12 ต.เวียง อ.เทิง จ.เชียงราย", "phone": "090-519-5209", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 57, "name": "นายธีระพล เลิศสงคราม", "skill": "การจัดการขยะในชุมชน", "addr": "101 หมู่ที่ 8 ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}, {"no": 58, "name": "นายณัฐพงษ์ คำนา", "skill": "การส่งเสริมทักษะชีวิตผู้สูงอายุ และการดูแลสุขภาพ", "addr": "6 ม.3 ต.หงาว อ.เทิง จ.เชียงราย", "phone": "086-184-8827", "tambon": "หงาว", "amphoe": "เทิง", "area": "ต.หงาว"}, {"no": 59, "name": "น.ส.ปิยพร ป๊อกถา", "skill": "ภัยที่มากับฤดูฝน", "addr": "30 ม.1 ต.ศรีดอนไชย อ.เทิง จ.เชียงราย", "phone": "086-797-0404", "tambon": "ศรีดอนไชย", "amphoe": "เทิง", "area": "ต.ศรีดอนไชย"}, {"no": 60, "name": "นายปิยชน เขื่อนศิริ", "skill": "การจัดการขยะในชุมชน", "addr": "42 ม.24 ต.เวียง อ.เทิง จ.เชียงราย", "phone": "062-106-7783", "tambon": "เวียง", "amphoe": "เทิง", "area": "ต.เวียง"}, {"no": 61, "name": "นายเลาเก๋อ แซ่ฟ้า", "skill": "การตัดกระดาษเพื่อใช้ในงานพิธีชาติพันธุ์ม้ง", "addr": "1 หมู่11ต.ตับเต่า อ.เทิง จ.เชียงราย", "phone": "061-242-6004", "tambon": "ตับเต่า", "amphoe": "เทิง", "area": "ต.ตับเต่า"}]}}}</script>
+<script id="app">
+(function(){
+let S = JSON.parse(document.getElementById('state').textContent);
+/* บัญชีผู้แก้ไข: ชื่อจริง → บัญชี Firebase (รหัสผ่านตรวจที่ Firebase ไม่อยู่ในหน้าเว็บ) */
+const STAFF = [{"n": "ศุภลักษณ์", "f": "นางสาวศุภลักษณ์ เธียรเรืองนนท์", "e": "t01"}, {"n": "วัชรีพรรณ", "f": "นางสาววัชรีพรรณ จันทร์หอม", "e": "t02"}, {"n": "สุทธิสิทธิ์", "f": "นายสุทธิสิทธิ์ บัณฑิตชูสกุล", "e": "t03"}, {"n": "วนศาสตร์", "f": "นายวนศาสตร์ วัฒนาสกุลลี", "e": "t04"}, {"n": "วีนัส", "f": "นางวีนัส สรรพสุข", "e": "t05"}, {"n": "เด่นนภา", "f": "นางสาวเด่นนภา นิทะโน", "e": "t06"}, {"n": "อดิเรก", "f": "นายอดิเรก ประยศ", "e": "t07"}, {"n": "ศุภชัย", "f": "นายศุภชัย แก้วกระจ่าง", "e": "t08"}, {"n": "ประสิทธิ์", "f": "นายประสิทธิ์ วิชัย", "e": "t09"}, {"n": "รัชฎาภรณ์", "f": "นางสาวรัชฎาภรณ์ สุริยนต์", "e": "t10"}, {"n": "ทับทิม", "f": "นางทับทิม พุทธตาล", "e": "t11"}, {"n": "กัญญ์วรา", "f": "นางกัญญ์วรา สีหมนตรี", "e": "t12"}, {"n": "ธันยพัต", "f": "นางธันยพัต ปกครองบ้าน", "e": "t13"}, {"n": "ดวงกมล", "f": "นางสาวดวงกมล เข็มเพชร", "e": "t14"}, {"n": "ปราณี", "f": "นางปราณี ใจกว้าง", "e": "t15"}, {"n": "ชนิสรา", "f": "นางสาวชนิสรา ปันปิง", "e": "t16"}, {"n": "สรนันท์", "f": "นายสรนันท์ แสนยศ", "e": "t18"}, {"n": "นรินทร์ลักษณ์", "f": "นางสาวนรินทร์ลักษณ์ นักหล่อ", "e": "t19"}, {"n": "สายสุนีย์", "f": "นางสายสุนีย์ โกฏฐา", "e": "t20"}, {"n": "วิมล", "f": "นายวิมล สุทธิจันทร์", "e": "t21"}, {"n": "สุณิศา", "f": "นางสุณิศา จินดาจักร์", "e": "t22"}, {"n": "ชินดนัย", "f": "นายชินดนัย คำต๊ะ", "e": "t23"}, {"n": "ธวัชชัย", "f": "นายธวัชชัย เพ็ชรแสง", "e": "t24"}, {"n": "อนุพงศ์", "f": "นายอนุพงศ์ สมจริงจงรัก", "e": "t25"}];
+const DOMAIN = 'thoeng-lrn.app';
+const ADMIN = true;  /* true = หน้าผู้ดูแล (admin.html), false = หน้าเว็บสำหรับผู้ชม (index.html) */
+
+const CATS = [
+  {id:'learn',   t:'แหล่งเรียนรู้', d:'ศูนย์เรียนรู้และฐานการเรียนรู้ในชุมชน พร้อมผู้ดูแลจากสถานศึกษา'},
+  {id:'read',    t:'แหล่งส่งเสริมการอ่านและการเรียน', d:'ศกร.ระดับตำบล ห้องสมุด บ้านหนังสือชุมชน และมุมหนังสือหมู่บ้าน'},
+  {id:'network', t:'ภาคีเครือข่าย', d:'หน่วยงานและองค์กรที่ร่วมส่งเสริม สนับสนุนสถานที่ วิทยากร และการจัดกิจกรรม'},
+  {id:'wisdom',  t:'ภูมิปัญญาท้องถิ่น', d:'ปราชญ์ชาวบ้านและผู้มีความชำนาญเฉพาะด้าน ที่พร้อมถ่ายทอดความรู้'}
+];
+const FIELDS = {
+  learn:  [['name','ชื่อแหล่งเรียนรู้',1],['addr','ที่ตั้ง',1],['keeper','ชื่อผู้ดูแล (บุคลากรภายในสถานศึกษา)',0]],
+  read:   [['name','ชื่อแหล่งเรียนรู้',1],['addr','ที่ตั้ง',1],['owner','เจ้าของบ้าน/สถานที่ (ถ้ามี)',0],['keeper','ชื่อผู้ดูแล (บุคลากรภายในสถานศึกษา)',0]],
+  network:[['name','ชื่อภาคีเครือข่าย',1],['addr','ที่ตั้ง/ที่อยู่',1],['role','บทบาทการมีส่วนร่วม/การส่งเสริมและสนับสนุน',0]],
+  wisdom: [['name','ชื่อ-สกุล',1],['skill','ความชำนาญ',1],['addr','ที่อยู่',1],['phone','เบอร์โทร',0]]
+};
+const I = {
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  user:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  hand:'<svg viewBox="0 0 24 24"><path d="M4 12h4l3 3 5-5"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg>',
+  home:'<svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9H3z"/></svg>',
+  tel:'<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1Z"/></svg>'
+};
+const EYE = {
+  open:'<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+  shut:'<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>'
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const years = () => Object.keys(S.years).sort((a,b)=>b-a);
+function ss(k,v){ try{ if(v===undefined){ const r=sessionStorage.getItem(k); sessionStorage.removeItem(k); return r; } sessionStorage.setItem(k,v); }catch(_){ return null; } }
+
+let year = ss('thoeng-year'); if(!S.years[year]) year = years()[0];
+let cur = 'learn';
+let fb = null, fbMsg = 'กำลังเชื่อมต่อฐานข้อมูล ลองกดอีกครั้งในไม่กี่วินาที', fsEmpty = false, canEdit = ADMIN, who = '', editOn = false, busy = false;
+let modal = null, delArmed = null;
+
+/* ---------- text helpers ---------- */
+function clean(s){
+  if(s == null) return '';
+  return String(s).trim()
+    .replace(/([ัิ-ฺ็-๎])\1+/g,'$1')
+    .replace(/อำเเภอ/g,'อำเภอ').replace(/เเ/g,'แ').replace(/เชียราย/g,'เชียงราย')
+    .replace(/^ที่ตั้ง\s*:\s*/,'').replace(/\s+/g,' ').replace(/\s*\(\s*$/,'').trim();
+}
+function fmtPhone(p){ p = String(p||'').replace(/\D/g,''); return p.length===10 ? p.slice(0,3)+'-'+p.slice(3,6)+'-'+p.slice(6) : p; }
+function areaOf(addr){
+  const a = String(addr||'').split(' / ')[0];
+  const t = (a.match(/(?:ต\.|ตำบล)\s*([^\s]+?)(?=\s|อ\.|อำเภอ|$)/)||[])[1] || '';
+  let p = (a.match(/(?:อ\.|อำเภอ)\s*([^\s]+?)(?=\s|จ\.|จังหวัด|$)/)||[])[1] || '';
+  if(!p && /เทิง/.test(a)) p = 'เทิง';
+  if(!t) return 'ไม่ระบุตำบล';
+  return (p==='เทิง' || !p) ? 'ต.'+t : 'นอกอำเภอเทิง';
+}
+function hl(s, q){ s = esc(s); if(!q) return s; const k = esc(q); const i = s.toLowerCase().indexOf(k.toLowerCase()); return i<0 ? s : s.slice(0,i)+'<mark>'+s.slice(i,i+k.length)+'</mark>'+s.slice(i+k.length); }
+
+/* ---------- render ---------- */
+function D(){ return S.years[year] || (S.years[year] = {learn:[],read:[],network:[],wisdom:[]}); }
+function renderYear(){
+  $('#year').innerHTML = years().map(y=>`<option value="${y}"${y===year?' selected':''}>${y}</option>`).join('');
+  $('#foot').textContent = `ข้อมูลทำเนียบแหล่ง/องค์กร ส่งเสริมการเรียนรู้ ปีงบประมาณ พ.ศ. ${year} · ผู้ดูแล หมายถึง บุคลากรภายในสถานศึกษาที่รับผิดชอบแหล่งเรียนรู้นั้น`
+    + (S.updated && S.updated.by ? ` · แก้ไขล่าสุดโดย ${S.updated.by} เมื่อ ${new Date(S.updated.at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})} น.` : '');
+}
+function renderTabs(){
+  $('#tabs').innerHTML = CATS.map(c => `<button class="tab" role="tab" aria-selected="${c.id===cur}" data-id="${c.id}"><span class="n">${(D()[c.id]||[]).length}</span><span class="t">${c.t}</span></button>`).join('');
+}
+function renderArea(){
+  const items = D()[cur] || [], m = {}, keep = $('#area').value;
+  items.forEach(x => { const a = x.area || areaOf(x.addr); m[a] = (m[a]||0)+1; });
+  const keys = Object.keys(m).sort((a,b)=> (a[0]!=='ต')-(b[0]!=='ต') || a.localeCompare(b,'th'));
+  $('#area').innerHTML = `<option value="">ทุกตำบล (${items.length})</option>` + keys.map(k=>`<option value="${esc(k)}">${esc(k)} (${m[k]})</option>`).join('');
+  if(m[keep]) $('#area').value = keep;
+}
+function card(x, i, q){
+  const r = [];
+  if(cur==='wisdom'){
+    r.push(`<span class="skill">${hl(x.skill,q)}</span>`);
+    if(x.addr) r.push(`<div class="row">${I.pin}<span>${hl(x.addr,q)}</span></div>`);
+    if(x.phone) r.push(`<div class="row">${I.tel}<span class="phone"><span class="num">${esc(x.phone)}</span><button class="copy" data-copy="${esc(x.phone)}">คัดลอก</button></span></div>`);
+  } else {
+    if(x.addr) r.push(`<div class="row">${I.pin}<span>${hl(x.addr,q)}</span></div>`);
+    if(x.owner) r.push(`<div class="row">${I.home}<span>เจ้าของบ้าน <b>${hl(x.owner,q)}</b></span></div>`);
+    if(x.keeper) r.push(`<div class="row">${I.user}<span>ผู้ดูแล <b>${hl(x.keeper,q)}</b></span></div>`);
+    if(x.role) r.push(`<div class="row">${I.hand}<span>${hl(x.role,q)}</span></div>`);
+  }
+  const act = editOn ? `<div class="cardact"><button class="btn" data-edit="${i}">แก้ไข</button><button class="btn danger" data-del="${i}">${delArmed===('e'+i)?'กดอีกครั้งเพื่อยืนยันลบ':'ลบ'}</button></div>` : '';
+  return `<li class="card"><span class="no">${esc(x.no)}</span><div class="body"><p class="name">${hl(x.name,q)}</p>${r.join('')}<span class="area">${esc(x.area||areaOf(x.addr))}</span>${act}</div></li>`;
+}
+function filtered(){
+  const a = $('#area').value, ql = $('#q').value.trim().toLowerCase();
+  return (D()[cur] || []).map((x,i)=>[x,i]).filter(([x]) => (!a || (x.area||areaOf(x.addr))===a) && (!ql || [x.name,x.addr,x.keeper,x.role,x.skill,x.owner,x.phone].some(v => v && String(v).toLowerCase().includes(ql))));
+}
+function renderList(){
+  const q = $('#q').value.trim(), a = $('#area').value, ql = q.toLowerCase();
+  const all = D()[cur] || [];
+  const items = filtered();
+  let html;
+  if(items.length) html = items.map(([x,i])=>card(x,i,q)).join('');
+  else if(!all.length) html = `<li class="empty">ยังไม่มีข้อมูลหมวดนี้ในปีงบประมาณ ${esc(year)}${canEdit?' · กด “แก้ไขข้อมูล” แล้วเลือก “เพิ่มรายการในหมวดนี้”':''}</li>`;
+  else html = `<li class="empty">ไม่พบรายการที่ตรงกับ “${esc(q)}” ลองพิมพ์คำอื่นหรือเลือก “ทุกตำบล”</li>`;
+  $('#list').innerHTML = html;
+  $('#count').textContent = `แสดง ${items.length} จาก ${all.length} รายการ`;
+}
+function renderEdit(){
+  $('#editToggle').hidden = !canEdit;
+  $('#editToggle').textContent = editOn ? 'เสร็จสิ้นการแก้ไข' : (who ? 'แก้ไขข้อมูล' : 'เข้าสู่ระบบเพื่อแก้ไข');
+  $('#who').hidden = !(canEdit && who); $('#who').textContent = who ? 'ผู้แก้ไข: ' + who : '';
+  $('#editbar').hidden = !(canEdit && editOn);
+  $('#editlbl').textContent = `โหมดแก้ไข · ปีงบประมาณ ${year}`;
+  const d = $('#delYear');
+  d.disabled = years().length < 2;
+  d.title = d.disabled ? 'ต้องมีอย่างน้อย 1 ปีงบประมาณ' : '';
+  d.textContent = delArmed==='year' ? `กดอีกครั้งเพื่อยืนยันลบปี ${year}` : 'ลบปีงบประมาณนี้';
+}
+function show(id){
+  if(!CATS.some(c=>c.id===id)) id = 'learn';
+  cur = id; delArmed = null;
+  renderTabs();
+  $('#desc').textContent = CATS.find(c=>c.id===id).d;
+  $('#area').value = '';
+  renderArea(); renderList(); renderEdit();
+}
+function renderAll(){ renderYear(); show(cur); }
+
+/* ---------- saving: Firebase Firestore ---------- */
+let toastT;
+function toast(msg, ms){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); if(ms) toastT=setTimeout(()=>t.hidden=true, ms); }
+function refresh(){ if(!S.years[year]) year = years()[0]; renderYear(); renderTabs(); renderArea(); renderList(); renderEdit(); }
+const pack = d => ({learn:d.learn||[], read:d.read||[], network:d.network||[], wisdom:d.wisdom||[]});
+async function save(next, keepYear){
+  if(busy) return false;
+  if(!fb){ toast(fbMsg, 5000); return false; }
+  if(!who){ toast('กรุณาเข้าสู่ระบบก่อนแก้ไข', 4000); return false; }
+  busy = true; toast('กำลังบันทึก…');
+  try{
+    const col = fb.db.collection('years'), batch = fb.db.batch();
+    for(const y of Object.keys(next.years)) if(fsEmpty || JSON.stringify(next.years[y]) !== JSON.stringify(S.years[y])) batch.set(col.doc(y), pack(next.years[y]));
+    if(!fsEmpty) for(const y of Object.keys(S.years)) if(!next.years[y]) batch.delete(col.doc(y));
+    const upd = {by: who, at: new Date().toISOString()};
+    batch.set(fb.db.collection('meta').doc('info'), {updated: upd});
+    await batch.commit();
+    S = next; S.updated = upd; fsEmpty = false; if(keepYear) year = keepYear;
+    refresh(); toast('บันทึกแล้ว', 2500);
+    return true;
+  }catch(e){
+    const c = e && e.code;
+    if(c==='permission-denied') toast('บัญชีนี้ไม่มีสิทธิ์บันทึก ตรวจสอบ Firestore Rules ตามคู่มือ', 6000);
+    else if(c==='unavailable') toast('เชื่อมต่ออินเทอร์เน็ตไม่ได้ บันทึกไม่สำเร็จ', 5000);
+    else toast('บันทึกไม่สำเร็จ ('+(c||'error')+') ลองอีกครั้ง', 5000);
+    return false;
+  }finally{ busy = false; }
+}
+
+/* ---------- forms ---------- */
+function openModal(kind, idx){
+  modal = {kind, idx}; $('#merr').textContent = ''; $('#msave').textContent = 'บันทึก';
+  const f = $('#mfields');
+  if(kind==='entry'){
+    const isNew = idx == null, x = isNew ? {} : D()[cur][idx];
+    const next = Math.max(0, ...(D()[cur]||[]).map(e=>+e.no||0)) + 1;
+    $('#mtitle').textContent = (isNew?'เพิ่มรายการ · ':'แก้ไขรายการ · ') + CATS.find(c=>c.id===cur).t;
+    f.innerHTML = `<div class="fld"><label for="f-no">ลำดับที่</label><input id="f-no" type="number" min="1" value="${esc(isNew?next:x.no)}"></div>`
+      + FIELDS[cur].map(([k,l,req]) => `<div class="fld"><label for="f-${k}">${l}${req?' *':''}</label><input id="f-${k}" value="${esc(x[k]||'')}"${k==='phone'?' inputmode="tel"':''}></div>`).join('');
+  } else if(kind==='login'){
+    $('#mtitle').textContent = 'เข้าสู่ระบบเพื่อแก้ไขข้อมูล';
+    f.innerHTML = `<div class="fld"><label for="f-user">ชื่อผู้ใช้</label><input id="f-user" autocomplete="username" placeholder="ชื่อจริง (ไม่ต้องใส่คำนำหน้าและนามสกุล)"></div>
+      <div class="fld"><label for="f-pass">รหัสผ่าน</label><div class="pw"><input id="f-pass" type="password" inputmode="numeric" autocomplete="current-password" placeholder="เบอร์โทรศัพท์ 10 หลัก"><button type="button" class="eye" id="f-eye" aria-label="แสดงรหัสผ่าน" aria-pressed="false">${EYE.open}</button></div></div>
+      <span class="hint" style="font-size:13px;color:var(--muted)">สำหรับบุคลากร สกร.ระดับอำเภอเทิง</span>`;
+    $('#msave').textContent = 'เข้าสู่ระบบ';
+  } else if(kind==='pdf'){
+    const c = CATS.find(c=>c.id===cur), n = filtered().length, isF = n !== (D()[cur]||[]).length;
+    $('#mtitle').textContent = 'ดาวน์โหลด PDF · ปีงบประมาณ ' + year;
+    f.innerHTML = `<div class="fld"><span style="font-weight:600;font-size:14px">เนื้อหาในรายงาน</span><div class="radios">
+        <label><input type="radio" name="pscope" id="ps-all" value="all" checked> ทั้ง 4 หมวด พร้อมหน้าสรุปจำนวน</label>
+        <label><input type="radio" name="pscope" id="ps-cur" value="cur"> เฉพาะหมวด “${esc(c.t)}”${isF?' ตามคำค้นและตำบลที่เลือก':''} (${n} รายการ)</label>
+      </div><span class="hint">ไฟล์ขนาด A4 แนวนอน เหมาะสำหรับแนบรายงานหรือพิมพ์</span></div>`;
+    $('#msave').textContent = 'สร้าง PDF';
+  } else {
+    const ys = years(), ny = (+ys[0]||2569)+1;
+    $('#mtitle').textContent = 'เพิ่มปีงบประมาณ';
+    f.innerHTML = `<div class="fld"><label for="f-year">ปีงบประมาณ พ.ศ.</label><input id="f-year" type="number" min="2500" max="2700" value="${ny}"></div>
+      <div class="fld"><span style="font-weight:600;font-size:14px">ข้อมูลเริ่มต้น</span><div class="radios">
+        <label><input type="radio" name="src" id="src-copy" value="copy" checked> คัดลอกข้อมูลจากปี <select id="f-from">${ys.map(y=>`<option>${y}</option>`).join('')}</select> แล้วแก้ไขต่อ</label>
+        <label><input type="radio" name="src" id="src-xlsx" value="xlsx"> นำเข้าจากไฟล์ Excel (รูปแบบเดียวกับไฟล์ทำเนียบเดิม)</label>
+        <label><input type="radio" name="src" id="src-empty" value="empty"> เริ่มจากว่าง</label>
+      </div></div>
+      <div class="fld" id="xlsxbox" hidden><label for="f-file">เลือกไฟล์ .xlsx</label><input id="f-file" type="file" accept=".xlsx,.xls"><span class="hint">ไฟล์ต้องมี 4 แผ่นงาน: แหล่งเรียนรู้ · แหล่งส่งเสริมการอ่านและการเรียน · ภาคีเครือข่าย · ภูมิปัญญาท้องถิ่น</span></div>`;
+    f.querySelectorAll('input[name=src]').forEach(r => r.addEventListener('change', () => $('#xlsxbox').hidden = !$('#src-xlsx').checked));
+  }
+  $('#modal').hidden = false;
+  const first = f.querySelector('input:not([type=radio])'); if(first) first.focus();
+}
+function closeModal(){ $('#modal').hidden = true; modal = null; }
+
+const libP = {};
+function loadLib(src, name){
+  return libP[src] || (libP[src] = new Promise((res, rej) => {
+    if(window[name]) return res(window[name]);
+    const s = document.createElement('script'); s.src = src;
+    s.onload = () => window[name] ? res(window[name]) : rej(new Error('load'));
+    s.onerror = () => { delete libP[src]; rej(new Error('load')); };
+    document.head.appendChild(s);
+  }));
+}
+const loadXLSX = () => loadLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX');
+
+/* ---------- PDF report ---------- */
+const COLS = {
+  learn:  [['no','ลำดับ',7,'c'],['name','ชื่อแหล่งเรียนรู้',33],['addr','ที่ตั้ง',35],['keeper','ผู้ดูแล (บุคลากรในสถานศึกษา)',25]],
+  read:   [['no','ลำดับ',7,'c'],['name','ชื่อแหล่งเรียนรู้',31],['addr','ที่ตั้ง',37],['keeper','ผู้ดูแล (บุคลากรในสถานศึกษา)',25]],
+  network:[['no','ลำดับ',7,'c'],['name','ชื่อภาคีเครือข่าย',30],['addr','ที่ตั้ง/ที่อยู่',30],['role','บทบาทการมีส่วนร่วม/การส่งเสริมและสนับสนุน',33]],
+  wisdom: [['no','ลำดับ',7,'c'],['name','รายชื่อ',22],['skill','ความชำนาญ',28],['addr','ที่อยู่',30],['phone','เบอร์โทร',13]]
+};
+function cellText(x,k){ if(k==='addr' && x.owner) return x.addr + ' (เจ้าของ: ' + x.owner + ')'; return x[k] == null ? '' : x[k]; }
+function buildReport(scope){
+  const root = $('#rpt'); root.innerHTML = ''; root.hidden = false;
+  const printed = new Date().toLocaleDateString('th-TH', {year:'numeric', month:'long', day:'numeric'});
+  const runHead = `<div class="rhead"><span>ทำเนียบแหล่ง/องค์กร ส่งเสริมการเรียนรู้ · ปีงบประมาณ พ.ศ. ${esc(year)}</span><span>อำเภอเทิง จังหวัดเชียงราย</span></div>`;
+  const pages = []; let body;
+  const newPage = () => {
+    const p = document.createElement('div'); p.className = 'rpage';
+    p.innerHTML = runHead + '<div class="rbody"></div><div class="rfoot"><span>ข้อมูล ณ วันที่ ' + esc(printed) + '</span><span class="pn"></span></div>';
+    root.appendChild(p); pages.push(p); body = p.querySelector('.rbody');
+  };
+  const fits = () => body.scrollHeight <= body.clientHeight + 1;
+  let sections;
+  if(scope === 'all'){
+    newPage();
+    const total = CATS.reduce((s,c)=>s+(D()[c.id]||[]).length,0);
+    body.innerHTML = `<div class="rcover"><p class="k">ทำเนียบ</p><h1>แหล่ง/องค์กร ส่งเสริมการเรียนรู้</h1><p class="k">อำเภอเทิง จังหวัดเชียงราย</p><span class="y">ปีงบประมาณ พ.ศ. ${esc(year)}</span>
+      <table class="rsum">${CATS.map(c=>`<tr><td>${esc(c.t)}</td><td>${(D()[c.id]||[]).length}</td></tr>`).join('')}<tr class="tot"><td>รวมทั้งสิ้น</td><td>${total}</td></tr></table></div>`;
+    sections = CATS.map(c => ({c, rows: D()[c.id] || [], note: ''}));
+  } else {
+    const c = CATS.find(c=>c.id===cur), rows = filtered().map(([x])=>x);
+    const a = $('#area').value, q = $('#q').value.trim();
+    const note = [a && a, q && ('คำค้น “'+q+'”')].filter(Boolean).join(' · ');
+    sections = [{c, rows, note}];
+  }
+  for(const s of sections){
+    newPage();
+    const cols = COLS[s.c.id];
+    const start = cont => {
+      const h = document.createElement('h2'); h.className = 'rh2';
+      h.innerHTML = esc(s.c.t) + (cont ? ' (ต่อ)' : '') + ` <small>${s.rows.length} รายการ${s.note ? ' · ' + esc(s.note) : ''}</small>`;
+      const t = document.createElement('table'); t.className = 'rtbl';
+      t.innerHTML = '<colgroup>' + cols.map(c=>`<col style="width:${c[2]}%">`).join('') + '</colgroup><thead><tr>' + cols.map(c=>`<th${c[3]?' class="c"':''}>${esc(c[1])}</th>`).join('') + '</tr></thead><tbody></tbody>';
+      body.appendChild(h); body.appendChild(t);
+      return t.tBodies[0];
+    };
+    let tb = start(false);
+    if(!s.rows.length){ tb.innerHTML = `<tr><td colspan="${cols.length}" class="c">ไม่มีข้อมูล</td></tr>`; continue; }
+    for(const x of s.rows){
+      const tr = document.createElement('tr');
+      tr.innerHTML = cols.map(c=>`<td${c[3]?' class="c"':''}>${esc(cellText(x,c[0]))}</td>`).join('');
+      tb.appendChild(tr);
+      if(!fits() && tb.rows.length > 1){ tr.remove(); newPage(); tb = start(true); tb.appendChild(tr); }
+    }
+  }
+  pages.forEach((p,i) => p.querySelector('.pn').textContent = `หน้า ${i+1} / ${pages.length}`);
+  return pages;
+}
+let downloads = null;
+const standalone = true;
+$('#pdfBtn').hidden = false;
+async function makePdf(scope){
+  if(!downloads && !standalone){ toast('ดาวน์โหลดไฟล์ไม่ได้ในหน้านี้', 4000); return false; }
+  toast('กำลังเตรียมสร้าง PDF…');
+  let h2c, jsp;
+  try{
+    [h2c, jsp] = await Promise.all([
+      loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas'),
+      loadLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf')
+    ]);
+  }catch(_){ toast('โหลดเครื่องมือสร้าง PDF ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 5000); return false; }
+  try{ await document.fonts.ready; }catch(_){}
+  const pages = buildReport(scope);
+  try{
+    const pdf = new jsp.jsPDF({orientation:'landscape', unit:'mm', format:'a4', compress:true});
+    for(let i=0;i<pages.length;i++){
+      toast(`กำลังสร้าง PDF หน้า ${i+1} / ${pages.length}…`);
+      const cv = await h2c(pages[i], {scale:2, backgroundColor:'#ffffff', logging:false});
+      if(i) pdf.addPage();
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 297, 210);
+    }
+    const tag = scope==='all' ? 'ทั้งหมด' : CATS.find(c=>c.id===cur).t;
+    const blob = pdf.output('blob');
+    $('#toast').hidden = true;
+    const fname = `ทำเนียบแหล่งองค์กรส่งเสริมการเรียนรู้_${year}_${tag}.pdf`;
+    if(standalone){ const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 10000); }
+    else await downloads.save({filename:fname, data:blob});
+    toast('บันทึกไฟล์ PDF แล้ว', 3000);
+    return true;
+  }catch(e){
+    const c = e && e.code;
+    if(c==='declined'){ toast('ยกเลิกการบันทึกไฟล์', 3000); return true; }
+    if(c==='rate_limited'){ toast('มีหน้าต่างบันทึกไฟล์เปิดอยู่ รอสักครู่แล้วลองใหม่', 4000); return false; }
+    if(c && c!=='bad_request'){ downloads = null; $('#pdfBtn').hidden = true; toast('ดาวน์โหลดไฟล์ไม่ได้ในหน้านี้', 4000); return true; }
+    toast('สร้าง PDF ไม่สำเร็จ', 4000); return false;
+  }finally{ $('#rpt').innerHTML = ''; $('#rpt').hidden = true; }
+}
+function parseSheet(rows, cat){
+  const out = [];
+  for(const r of rows){
+    const c = [0,1,2,3].map(i => clean(r[i]));
+    if(!c.some(Boolean)) continue;
+    if(!/^\d+$/.test(c[0])){
+      if(!c[0] && out.length){ const extra = c.filter(Boolean).join(' '), last = out[out.length-1]; if(cat==='network') last.name += ' '+extra; else last.addr += ' / '+extra; }
+      continue;
+    }
+    const [a,b,x,d] = c; let e;
+    if(cat==='wisdom'){
+      const ph = d.match(/0\d[\d\s-]{7,11}\d/);
+      e = {no:+a, name:b, skill:x, addr:d.replace(/\(?\s*0\d[\d\s-]{7,11}\d\s*\)?/,'').replace(/[\s()]+$/,'').trim(), phone: ph ? fmtPhone(ph[0]) : ''};
+    } else if(cat==='network') e = {no:+a, name:b, addr:x, role:d};
+    else e = {no:+a, name:b.replace(/^"|"$/g,''), addr:x, keeper:d};
+    out.push(e);
+  }
+  out.forEach(e => {
+    if(cat==='wisdom' && !e.phone){ const m = e.addr.match(/\((0\d{9})\)/); if(m){ e.phone = fmtPhone(m[1]); e.addr = e.addr.replace(m[0],'').trim(); } }
+    e.area = areaOf(e.addr);
+  });
+  return out.sort((p,q) => p.no - q.no);
+}
+async function readXlsx(file){
+  const X = await loadXLSX();
+  const wb = X.read(await file.arrayBuffer(), {type:'array'});
+  const pats = {learn:/^\s*แหล่งเรียนรู้/, read:/อ่าน/, network:/ภาคี/, wisdom:/ภูมิปัญญา/};
+  const data = {};
+  CATS.forEach((c,i) => {
+    const name = wb.SheetNames.find(n => pats[c.id].test(n)) || wb.SheetNames[i];
+    data[c.id] = name ? parseSheet(X.utils.sheet_to_json(wb.Sheets[name], {header:1, defval:null}), c.id) : [];
+  });
+  return data;
+}
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault(); if(!modal || busy) return;
+  const err = m => { $('#merr').textContent = m; };
+  if(modal.kind==='login'){
+    const name = $('#f-user').value.replace(/\s+/g,'').replace(/^ครู/,'');
+    const pass = $('#f-pass').value.replace(/\D/g,'');
+    if(!name || !pass) return err('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+    if(!fb) return err(fbMsg);
+    const m = STAFF.find(s => s.n === name);
+    if(!m) return err('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    $('#msave').disabled = true;
+    try{ await fb.auth.signInWithEmailAndPassword(m.e + '@' + DOMAIN, pass); }
+    catch(e){
+      const c = e && e.code;
+      return err(c==='auth/too-many-requests' ? 'ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่' : c==='auth/network-request-failed' ? 'เชื่อมต่ออินเทอร์เน็ตไม่ได้' : 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    }finally{ $('#msave').disabled = false; }
+    who = m.f; editOn = true; closeModal(); renderEdit(); renderList(); toast('ยินดีต้อนรับ ' + who, 2500);
+    return;
+  }
+  if(modal.kind==='pdf'){
+    const scope = $('#ps-cur').checked ? 'cur' : 'all';
+    $('#msave').disabled = true;
+    try{ if(await makePdf(scope)) closeModal(); else err('สร้างหรือบันทึกไฟล์ไม่สำเร็จ ลองอีกครั้ง'); }
+    finally{ $('#msave').disabled = false; }
+    return;
+  }
+  const next = clone(S);
+  if(modal.kind==='entry'){
+    const x = {no: parseInt($('#f-no').value,10) || 0};
+    for(const [k,l,req] of FIELDS[cur]){ const v = clean($('#f-'+k).value); if(req && !v) return err('กรุณากรอก '+l); if(v) x[k] = k==='phone' ? fmtPhone(v) : v; }
+    if(!x.no) return err('กรุณากรอกลำดับที่เป็นตัวเลข');
+    x.area = areaOf(x.addr);
+    const list = next.years[year][cur] = next.years[year][cur] || [];
+    if(modal.idx == null) list.push(x); else list[modal.idx] = x;
+    list.sort((p,q) => p.no - q.no);
+    if(await save(next)) closeModal();
+  } else {
+    const y = String(parseInt($('#f-year').value,10) || '');
+    if(!/^2[5-7]\d\d$/.test(y)) return err('กรุณากรอกปี พ.ศ. 4 หลัก เช่น 2570');
+    if(S.years[y]) return err('มีปีงบประมาณ '+y+' อยู่แล้ว');
+    let data;
+    if($('#src-copy').checked) data = clone(S.years[$('#f-from').value]);
+    else if($('#src-empty').checked) data = {learn:[],read:[],network:[],wisdom:[]};
+    else {
+      const file = $('#f-file').files[0]; if(!file) return err('กรุณาเลือกไฟล์ Excel');
+      try{ $('#msave').disabled = true; data = await readXlsx(file); }
+      catch(_){ return err('อ่านไฟล์ไม่ได้ ตรวจสอบว่าเป็นไฟล์ .xlsx รูปแบบเดียวกับไฟล์ทำเนียบเดิม'); }
+      finally{ $('#msave').disabled = false; }
+      const n = CATS.reduce((s,c)=>s+data[c.id].length,0);
+      if(!n) return err('ไม่พบรายการในไฟล์ ตรวจสอบว่าคอลัมน์แรกเป็นลำดับที่');
+    }
+    next.years[y] = data;
+    if(await save(next, y)) closeModal();
+  }
+});
+$('#mcancel').addEventListener('click', closeModal);
+$('#mfields').addEventListener('click', e => {
+  const b = e.target.closest('#f-eye'); if(!b) return;
+  const i = $('#f-pass'), show = i.type === 'password';
+  i.type = show ? 'text' : 'password';
+  b.innerHTML = show ? EYE.shut : EYE.open;
+  b.setAttribute('aria-pressed', show); b.setAttribute('aria-label', show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+  i.focus();
+});
+$('#modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape' && modal) closeModal(); });
+
+/* ---------- events ---------- */
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if(!b) return; if(location.hash !== '#'+b.dataset.id) location.hash = b.dataset.id; else show(b.dataset.id); });
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+$('#year').addEventListener('change', e => { year = e.target.value; delArmed = null; renderAll(); });
+$('#q').addEventListener('input', renderList);
+$('#area').addEventListener('change', renderList);
+$('#editToggle').addEventListener('click', () => {
+  if(!fb){ toast(fbMsg, 6000); return; }
+  if(!who){ openModal('login'); return; } editOn = !editOn; delArmed = null; renderEdit(); renderList(); });
+$('#logout').addEventListener('click', () => { if(fb && fb.auth) fb.auth.signOut(); who = ''; editOn = false; delArmed = null; renderEdit(); renderList(); toast('ออกจากระบบแล้ว', 2500); });
+$('#addEntry').addEventListener('click', () => openModal('entry'));
+$('#addYear').addEventListener('click', () => openModal('year'));
+$('#pdfBtn').addEventListener('click', () => openModal('pdf'));
+$('#delYear').addEventListener('click', async () => {
+  if(years().length < 2) return;
+  if(delArmed !== 'year'){ delArmed = 'year'; renderEdit(); return; }
+  const next = clone(S); delete next.years[year];
+  const keep = Object.keys(next.years).sort((a,b)=>b-a)[0];
+  delArmed = null; await save(next, keep);
+});
+$('#list').addEventListener('click', async e => {
+  const c = e.target.closest('.copy');
+  if(c){
+    const done = () => { c.textContent='คัดลอกแล้ว'; setTimeout(()=>c.textContent='คัดลอก',1500); };
+    const fb = () => { const r=document.createRange(); r.selectNodeContents(c.previousElementSibling); const s=getSelection(); s.removeAllRanges(); s.addRange(r); };
+    try{ navigator.clipboard.writeText(c.dataset.copy).then(done, fb); }catch(_){ fb(); }
+    return;
+  }
+  const ed = e.target.closest('[data-edit]'); if(ed){ openModal('entry', +ed.dataset.edit); return; }
+  const dl = e.target.closest('[data-del]');
+  if(dl){
+    const i = +dl.dataset.del;
+    if(delArmed !== 'e'+i){ delArmed = 'e'+i; renderList(); return; }
+    const next = clone(S); next.years[year][cur].splice(i,1); delArmed = null; await save(next);
+  }
+});
+
+renderAll();
+show(location.hash.slice(1) || 'learn');
+
+(function initFirebase(){
+  const cfg = window.FIREBASE_CONFIG;
+  if(!window.firebase){ fbMsg = 'โหลดระบบฐานข้อมูลไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วเปิดหน้าใหม่'; return; }
+  if(!cfg || !cfg.apiKey || !/^AIza/.test(cfg.apiKey)){ fbMsg = 'ยังไม่ได้ตั้งค่า Firebase (ไฟล์ firebase-config.js) จึงแก้ไขข้อมูลไม่ได้ หน้านี้แสดงข้อมูลสำรองในไฟล์'; return; }
+  try{
+    firebase.initializeApp(cfg);
+    const auth = ADMIN ? firebase.auth() : null, db = firebase.firestore();
+    fb = {auth, db};
+    if(ADMIN){
+      auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+      let first = true;
+      auth.onAuthStateChanged(u => {
+        const m = u && STAFF.find(s => s.e + '@' + DOMAIN === u.email);
+        who = m ? m.f : ''; if(!who) editOn = false;
+        renderEdit(); renderList();
+        if(first && !who && !modal) openModal('login');
+        first = false;
+      });
+    }
+    db.collection('years').onSnapshot(snap => {
+      fsEmpty = snap.empty;
+      if(!snap.empty){ const ys = {}; snap.forEach(d => ys[d.id] = pack(d.data())); S.years = ys; }
+      refresh();
+    }, () => toast('โหลดข้อมูลจากฐานข้อมูลไม่สำเร็จ กำลังแสดงข้อมูลสำรองในไฟล์', 5000));
+    db.collection('meta').doc('info').onSnapshot(d => { if(d.exists && d.data().updated){ S.updated = d.data().updated; renderYear(); } }, () => {});
+  }catch(e){ fb = null; fbMsg = 'ตั้งค่า Firebase ไม่ถูกต้อง: ' + (e && e.message || e); }
+})();
+})();
+</script>
+
+</body>
+</html>

@@ -9,7 +9,6 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=K2D:wght@400;500;600;700;800&display=swap">
 <style>body{margin:0}img{max-width:100%}</style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 </head>
@@ -148,7 +147,7 @@ mark{background:var(--yellow);color:var(--on-yellow);border-radius:3px;padding:0
       <h1>แหล่ง<span class="slash">/</span>องค์กร <span style="white-space:nowrap">ส่งเสริมการเรียนรู้</span></h1>
       <p class="sub">อำเภอเทิง จังหวัดเชียงราย</p>
     </div>
-    <div class="hbar"><button class="btn outline-y" id="pdfBtn" hidden>ดาวน์โหลด PDF</button><span class="who" id="who" hidden></span><button class="btn yellow" id="editToggle" hidden>แก้ไขข้อมูล</button></div>
+    <div class="hbar"><button class="btn outline-y" id="pdfBtn" hidden>ดาวน์โหลด PDF</button><span class="who" id="who" hidden></span><button class="btn yellow" id="editToggle" hidden aria-hidden="true">แก้ไขข้อมูล</button></div>
   </div>
 </header>
 
@@ -197,6 +196,7 @@ let S = JSON.parse(document.getElementById('state').textContent);
 /* บัญชีผู้แก้ไข: ชื่อจริง → บัญชี Firebase (รหัสผ่านตรวจที่ Firebase ไม่อยู่ในหน้าเว็บ) */
 const STAFF = [{"n": "ศุภลักษณ์", "f": "นางสาวศุภลักษณ์ เธียรเรืองนนท์", "e": "t01"}, {"n": "วัชรีพรรณ", "f": "นางสาววัชรีพรรณ จันทร์หอม", "e": "t02"}, {"n": "สุทธิสิทธิ์", "f": "นายสุทธิสิทธิ์ บัณฑิตชูสกุล", "e": "t03"}, {"n": "วนศาสตร์", "f": "นายวนศาสตร์ วัฒนาสกุลลี", "e": "t04"}, {"n": "วีนัส", "f": "นางวีนัส สรรพสุข", "e": "t05"}, {"n": "เด่นนภา", "f": "นางสาวเด่นนภา นิทะโน", "e": "t06"}, {"n": "อดิเรก", "f": "นายอดิเรก ประยศ", "e": "t07"}, {"n": "ศุภชัย", "f": "นายศุภชัย แก้วกระจ่าง", "e": "t08"}, {"n": "ประสิทธิ์", "f": "นายประสิทธิ์ วิชัย", "e": "t09"}, {"n": "รัชฎาภรณ์", "f": "นางสาวรัชฎาภรณ์ สุริยนต์", "e": "t10"}, {"n": "ทับทิม", "f": "นางทับทิม พุทธตาล", "e": "t11"}, {"n": "กัญญ์วรา", "f": "นางกัญญ์วรา สีหมนตรี", "e": "t12"}, {"n": "ธันยพัต", "f": "นางธันยพัต ปกครองบ้าน", "e": "t13"}, {"n": "ดวงกมล", "f": "นางสาวดวงกมล เข็มเพชร", "e": "t14"}, {"n": "ปราณี", "f": "นางปราณี ใจกว้าง", "e": "t15"}, {"n": "ชนิสรา", "f": "นางสาวชนิสรา ปันปิง", "e": "t16"}, {"n": "สรนันท์", "f": "นายสรนันท์ แสนยศ", "e": "t18"}, {"n": "นรินทร์ลักษณ์", "f": "นางสาวนรินทร์ลักษณ์ นักหล่อ", "e": "t19"}, {"n": "สายสุนีย์", "f": "นางสายสุนีย์ โกฏฐา", "e": "t20"}, {"n": "วิมล", "f": "นายวิมล สุทธิจันทร์", "e": "t21"}, {"n": "สุณิศา", "f": "นางสุณิศา จินดาจักร์", "e": "t22"}, {"n": "ชินดนัย", "f": "นายชินดนัย คำต๊ะ", "e": "t23"}, {"n": "ธวัชชัย", "f": "นายธวัชชัย เพ็ชรแสง", "e": "t24"}, {"n": "อนุพงศ์", "f": "นายอนุพงศ์ สมจริงจงรัก", "e": "t25"}];
 const DOMAIN = 'thoeng-lrn.app';
+const ADMIN = false;  /* true = หน้าผู้ดูแล (admin.html), false = หน้าเว็บสำหรับผู้ชม (index.html) */
 
 const CATS = [
   {id:'learn',   t:'แหล่งเรียนรู้', d:'ศูนย์เรียนรู้และฐานการเรียนรู้ในชุมชน พร้อมผู้ดูแลจากสถานศึกษา'},
@@ -229,7 +229,7 @@ function ss(k,v){ try{ if(v===undefined){ const r=sessionStorage.getItem(k); ses
 
 let year = ss('thoeng-year'); if(!S.years[year]) year = years()[0];
 let cur = 'learn';
-let fb = null, fbMsg = 'กำลังเชื่อมต่อฐานข้อมูล ลองกดอีกครั้งในไม่กี่วินาที', fsEmpty = false, canEdit = true, who = '', editOn = false, busy = false;
+let fb = null, fbMsg = 'กำลังเชื่อมต่อฐานข้อมูล ลองกดอีกครั้งในไม่กี่วินาที', fsEmpty = false, canEdit = ADMIN, who = '', editOn = false, busy = false;
 let modal = null, delArmed = null;
 
 /* ---------- text helpers ---------- */
@@ -606,7 +606,7 @@ $('#area').addEventListener('change', renderList);
 $('#editToggle').addEventListener('click', () => {
   if(!fb){ toast(fbMsg, 6000); return; }
   if(!who){ openModal('login'); return; } editOn = !editOn; delArmed = null; renderEdit(); renderList(); });
-$('#logout').addEventListener('click', () => { if(fb) fb.auth.signOut(); who = ''; editOn = false; delArmed = null; renderEdit(); renderList(); toast('ออกจากระบบแล้ว', 2500); });
+$('#logout').addEventListener('click', () => { if(fb && fb.auth) fb.auth.signOut(); who = ''; editOn = false; delArmed = null; renderEdit(); renderList(); toast('ออกจากระบบแล้ว', 2500); });
 $('#addEntry').addEventListener('click', () => openModal('entry'));
 $('#addYear').addEventListener('click', () => openModal('year'));
 $('#pdfBtn').addEventListener('click', () => openModal('pdf'));
@@ -643,14 +643,19 @@ show(location.hash.slice(1) || 'learn');
   if(!cfg || !cfg.apiKey || !/^AIza/.test(cfg.apiKey)){ fbMsg = 'ยังไม่ได้ตั้งค่า Firebase (ไฟล์ firebase-config.js) จึงแก้ไขข้อมูลไม่ได้ หน้านี้แสดงข้อมูลสำรองในไฟล์'; return; }
   try{
     firebase.initializeApp(cfg);
-    const auth = firebase.auth(), db = firebase.firestore();
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+    const auth = ADMIN ? firebase.auth() : null, db = firebase.firestore();
     fb = {auth, db};
-    auth.onAuthStateChanged(u => {
-      const m = u && STAFF.find(s => s.e + '@' + DOMAIN === u.email);
-      who = m ? m.f : ''; if(!who) editOn = false;
-      renderEdit(); renderList();
-    });
+    if(ADMIN){
+      auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+      let first = true;
+      auth.onAuthStateChanged(u => {
+        const m = u && STAFF.find(s => s.e + '@' + DOMAIN === u.email);
+        who = m ? m.f : ''; if(!who) editOn = false;
+        renderEdit(); renderList();
+        if(first && !who && !modal) openModal('login');
+        first = false;
+      });
+    }
     db.collection('years').onSnapshot(snap => {
       fsEmpty = snap.empty;
       if(!snap.empty){ const ys = {}; snap.forEach(d => ys[d.id] = pack(d.data())); S.years = ys; }
