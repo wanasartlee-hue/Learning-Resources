@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // เขียนได้เฉพาะบัญชีบุคลากร สกร.ระดับอำเภอเทิง ที่สร้างจาก setup.html
+    function isStaff() {
+      return request.auth != null && request.auth.token.email in [
+        't01@thoeng-lrn.app',
+        't02@thoeng-lrn.app',
+        't03@thoeng-lrn.app',
+        't04@thoeng-lrn.app',
+        't05@thoeng-lrn.app',
+        't06@thoeng-lrn.app',
+        't07@thoeng-lrn.app',
+        't08@thoeng-lrn.app',
+        't09@thoeng-lrn.app',
+        't10@thoeng-lrn.app',
+        't11@thoeng-lrn.app',
+        't12@thoeng-lrn.app',
+        't13@thoeng-lrn.app',
+        't14@thoeng-lrn.app',
+        't15@thoeng-lrn.app',
+        't16@thoeng-lrn.app',
+        't18@thoeng-lrn.app',
+        't19@thoeng-lrn.app',
+        't20@thoeng-lrn.app',
+        't21@thoeng-lrn.app',
+        't22@thoeng-lrn.app',
+        't23@thoeng-lrn.app',
+        't24@thoeng-lrn.app',
+        't25@thoeng-lrn.app'
+      ];
+    }
+    match /years/{year} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+    match /meta/{doc} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+  }
+}
